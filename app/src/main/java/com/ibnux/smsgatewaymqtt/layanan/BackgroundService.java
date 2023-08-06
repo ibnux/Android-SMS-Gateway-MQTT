@@ -49,7 +49,7 @@ import java.util.Calendar;
 import java.util.UUID;
 
 public class BackgroundService extends Service {
-    MqttAndroidClient mqttAndroidClient;
+    public static MqttAndroidClient mqttAndroidClient;
 
     BroadcastReceiver deliveredReceiver = new BroadcastReceiver() {
         @Override
