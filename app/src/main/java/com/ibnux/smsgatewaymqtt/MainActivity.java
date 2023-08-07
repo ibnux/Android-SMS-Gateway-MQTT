@@ -4,6 +4,8 @@ package com.ibnux.smsgatewaymqtt;
  * Created by Ibnu Maksum 2020
  */
 
+import static com.ibnux.smsgatewaymqtt.layanan.BackgroundService.ACTION_STOP;
+
 import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -72,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
         editTextSearch = findViewById(R.id.editTextSearch);
         swipe = findViewById(R.id.swipe);
         info = findViewById(R.id.text);
-        info.setText("Click Me to Show Configuration");
+        info.setText("Click Me to Show Device ID");
         info.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -83,7 +85,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onRefresh() {
                 adapter.getNewData();
-                info.setText("Click Me to Show Configuration");
+                info.setText("Click Me to Show Device ID");
                 updateInfo();
                 swipe.setRefreshing(false);
             }
@@ -190,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
             mqtt_server = "tcp://broker.hivemq.com:1883";
             sp.edit().putString("mqtt_server", mqtt_server).apply();
         }
-        infoTxt = "Your Device ID \n\n" + deviceID + "\n"+"MQTT Server \n\n" + mqtt_server + "\n";
+        infoTxt = "Your Device ID \n" + deviceID + "\n\n"+"MQTT Server \n" + mqtt_server + "\n";
     }
 
     public void checkServices() {
@@ -220,10 +222,9 @@ public class MainActivity extends AppCompatActivity {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 getSharedPreferences("pref", 0).edit().putBoolean("gateway_on", isChecked).apply();
                 if (!isChecked) {
-                    stopService(new Intent(MainActivity.this, BackgroundService.class));
-                    Intent intent = new Intent("BackgroundService");
-                    intent.putExtra("kill", true);
-                    LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(intent);
+                    Intent i = new Intent(getApplicationContext(), BackgroundService.class);
+                    i.setAction(ACTION_STOP);
+                    startService(i);
                     Toast.makeText(MainActivity.this, "Gateway OFF", Toast.LENGTH_LONG).show();
                 } else {
                     checkServices();
@@ -394,9 +395,10 @@ public class MainActivity extends AppCompatActivity {
 
                 // Reset Services
                 if (sp.getBoolean("gateway_on", true)) {
-                    Intent intent = new Intent("BackgroundService");
-                    intent.putExtra("kill", true);
-                    LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(intent);
+                    Intent i = new Intent(getApplicationContext(), BackgroundService.class);
+                    i.setAction(ACTION_STOP);
+                    startService(i);
+
                     new Handler().postDelayed(new Runnable() {
                         @Override
                         public void run() {

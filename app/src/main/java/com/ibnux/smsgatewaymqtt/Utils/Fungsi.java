@@ -27,6 +27,7 @@ import com.ibnux.smsgatewaymqtt.MainActivity;
 import com.ibnux.smsgatewaymqtt.ObjectBox;
 import com.ibnux.smsgatewaymqtt.R;
 import com.ibnux.smsgatewaymqtt.data.LogLine;
+import com.ibnux.smsgatewaymqtt.data.LogLine_;
 import com.ibnux.smsgatewaymqtt.layanan.BackgroundService;
 import com.ibnux.smsgatewaymqtt.layanan.UssdService;
 
@@ -89,6 +90,7 @@ public class Fungsi {
                 cal.get(Calendar.HOUR_OF_DAY) + ":" + cal.get(Calendar.MINUTE) + ":" + cal.get(Calendar.SECOND);
         ll.message = message;
         ObjectBox.get().boxFor(LogLine.class).put(ll);
+        ObjectBox.get().boxFor(LogLine.class).query().less(LogLine_.time, System.currentTimeMillis()-3600000L).build().remove();
         BackgroundService.tellMainActivity();
     }
 

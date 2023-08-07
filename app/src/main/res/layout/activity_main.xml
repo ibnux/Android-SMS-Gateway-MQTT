@@ -20,7 +20,6 @@
                 android:id="@+id/text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:autoLink="web"
                 android:gravity="center_horizontal"
                 android:linksClickable="true"
                 android:text="Hello World!"

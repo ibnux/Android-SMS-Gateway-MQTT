@@ -4,6 +4,7 @@ package com.ibnux.smsgatewaymqtt.layanan;
  * Created by Ibnu Maksum 2020
  */
 
+
 import android.Manifest;
 import android.app.Activity;
 import android.app.Notification;
@@ -17,6 +18,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -29,9 +31,14 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.ibnux.smsgatewaymqtt.Aplikasi;
 import com.ibnux.smsgatewaymqtt.MainActivity;
+import com.ibnux.smsgatewaymqtt.ObjectBox;
 import com.ibnux.smsgatewaymqtt.R;
 import com.ibnux.smsgatewaymqtt.Utils.Fungsi;
 import com.ibnux.smsgatewaymqtt.Utils.SimUtil;
+import com.ibnux.smsgatewaymqtt.data.LogLine;
+import com.ibnux.smsgatewaymqtt.data.LogLine_;
+import com.ibnux.smsgatewaymqtt.data.LogMessage;
+import com.ibnux.smsgatewaymqtt.data.LogMessage_;
 
 import org.eclipse.paho.android.service.MqttAndroidClient;
 import org.eclipse.paho.client.mqttv3.DisconnectedBufferOptions;
@@ -48,9 +55,17 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.UUID;
 
+import io.objectbox.Box;
+import io.objectbox.query.QueryBuilder;
+import kotlin.reflect.KFunction;
+
 public class BackgroundService extends Service {
     public static MqttAndroidClient mqttAndroidClient;
 
+    public static final String ACTION_STOP = "com.ibnux.smsgatewaymqtt.action.STOP";
+    WifiManager.WifiLock wifiLock=null;
+    NotificationManager mNotificationManager = null;
+    public static PendingIntent contentIntent;
     BroadcastReceiver deliveredReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context arg0, Intent arg1) {
@@ -148,54 +163,94 @@ public class BackgroundService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Fungsi.log("BackgroundService onStartCommand");
-        Fungsi.writeLog("Background Services Started");
-        NotificationManager mNotificationManager = (NotificationManager) Aplikasi.app.getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager = getNotificationServices();
+        if (intent!=null && intent.getAction()!=null && intent.getAction().equals(ACTION_STOP)) {
+            lockWifi(false);
+            mNotificationManager.cancelAll();
+            mNotificationManager = null;
+            try {
+                mqttAndroidClient.disconnect();
+            } catch (MqttException e) {
+                e.printStackTrace();
+            }
+            stopForeground(true);
+            stopSelf();
+        }else {
+            Fungsi.writeLog("Background Services Started");
 
-        if(Build.VERSION.SDK_INT>25) {
-            NotificationChannel androidChannel = new NotificationChannel("MQTT Listener",
-                    "Background", NotificationManager.IMPORTANCE_LOW);
-            androidChannel.enableLights(false);
-            androidChannel.enableVibration(false);
-            androidChannel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
 
-            mNotificationManager.createNotificationChannel(androidChannel);
+            if (Build.VERSION.SDK_INT > 25) {
+                NotificationChannel androidChannel = new NotificationChannel("MQTT Listener",
+                        "Background", NotificationManager.IMPORTANCE_LOW);
+                androidChannel.enableLights(false);
+                androidChannel.enableVibration(false);
+                androidChannel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+
+                mNotificationManager.createNotificationChannel(androidChannel);
+            }
+
+            contentIntent = PendingIntent.getActivity(Aplikasi.app, 0, new Intent(Aplikasi.app, MainActivity.class), PendingIntent.FLAG_MUTABLE);
+
+            setNotification(Aplikasi.app.getText(R.string.app_name).toString(), Aplikasi.app.getSharedPreferences("pref", 0).getString("mqtt_server", "tcp://broker.hivemq.com:1883"), "Connecting");
+            LocalBroadcastManager.getInstance(this).registerReceiver(receiver, new IntentFilter("BackgroundService"));
+            mqttService();
         }
+        return super.onStartCommand(intent, flags, startId);
+    }
 
-        PendingIntent contentIntent = PendingIntent.getActivity(Aplikasi.app, 0, new Intent(Aplikasi.app, MainActivity.class), PendingIntent.FLAG_MUTABLE);
+    public NotificationManager getNotificationServices(){
+        if(mNotificationManager==null)
+            return (NotificationManager) Aplikasi.app.getSystemService(Context.NOTIFICATION_SERVICE);
+        return mNotificationManager;
+    }
 
-        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(Aplikasi.app,"MQTT Listener")
+    public void setNotification(String title, String content, String subtext ){
+        mNotificationManager = getNotificationServices();
+        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(Aplikasi.app, "MQTT Listener")
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle(Aplikasi.app.getText(R.string.app_name))
+                .setContentTitle(title)
+                .setSubText(subtext)
                 .setOngoing(true)
-                .setContentText(Aplikasi.app.getSharedPreferences("pref",0).getString("mqtt_server","tcp://broker.hivemq.com:1883"))
+                .setContentText(content)
                 .setAutoCancel(false);
         mBuilder.setContentIntent(contentIntent);
         mNotificationManager.notify(34, mBuilder.build());
-        LocalBroadcastManager.getInstance(this).registerReceiver(receiver,new IntentFilter("BackgroundService"));
-        mqttService();
-        return Service.START_STICKY;
+    }
+
+    public void setSubtext(String subtext){
+
+        setNotification(Aplikasi.app.getText(R.string.app_name).toString(), Aplikasi.app.getSharedPreferences("pref", 0).getString("mqtt_server", "tcp://broker.hivemq.com:1883"), subtext);
     }
 
     public void mqttService() {
-        SharedPreferences sp = Aplikasi.app.getSharedPreferences("pref",0);
-        if(sp.getString("mqtt_server", null)==null){
+        SharedPreferences sp = Aplikasi.app.getSharedPreferences("pref", 0);
+        if (sp.getString("mqtt_server", null) == null) {
             Fungsi.writeLog("MQTT Server not found");
             return;
         }
-        mqttAndroidClient = new MqttAndroidClient(getApplicationContext(), sp.getString("mqtt_server", null), sp.getString("deviceID", UUID.randomUUID().toString()));
+        if (mqttAndroidClient == null){
+                mqttAndroidClient = new MqttAndroidClient(getApplicationContext(), sp.getString("mqtt_server", null), sp.getString("deviceID", UUID.randomUUID().toString()));
+        }
         mqttAndroidClient.setCallback(new MqttCallbackExtended() {
             @Override
             public void connectionLost(Throwable cause) {
-                cause.printStackTrace();
-                Fungsi.writeLog("ERROR: NODATA : push received without data\n" + cause.getMessage());
+                if(cause!=null){
+                    cause.printStackTrace();
+                    Fungsi.writeLog("ERROR: NODATA : push received without data\n" + cause.getMessage());
+                }
+                Fungsi.writeLog("MQTT Disconnected");
+                if(mNotificationManager!=null)
+                    setSubtext("Connection Lost");
             }
 
             @Override
             public void messageArrived(String topic, MqttMessage message) throws Exception {
                 try {
                     String msg = new String(message.getPayload());
+                    Box<LogMessage> box= ObjectBox.get().boxFor(LogMessage.class);
+                    // remove duplicate log after 5 minutes
+                    box.query().less(LogMessage_.time, System.currentTimeMillis()-300000L).build().remove();
                     if (!msg.isEmpty()) {
-                        Fungsi.writeLog("MQTT Received: " + topic + "\n" + msg);
 
                         JSONObject json = new JSONObject(new String(message.getPayload()));
                         String to = json.getString("to");
@@ -211,22 +266,27 @@ public class BackgroundService extends Service {
                                 "Message " + text);
 
                         if (!TextUtils.isEmpty(to) && !TextUtils.isEmpty(text)) {
-
+                            Fungsi.writeLog("MQTT Received: " + topic + "\n" + msg);
                             if (sp.getBoolean("gateway_on", true)) {
                                 String finalSim = sim;
-                                new Thread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        sendSMSorUSSD(to, text, Integer.parseInt(finalSim));
-                                    }
-                                }).start();
+                                // low bandwidth will have duplicate message
+                                if(box.query().equal(LogMessage_.message, to+message+sim, QueryBuilder.StringOrder.CASE_INSENSITIVE).build().find().size()==0) {
+                                    box.put(new LogMessage(to+message+sim));
+                                    new Thread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            sendSMSorUSSD(to, text, Integer.parseInt(finalSim));
+                                        }
+                                    }).start();
+                                }else{
+                                    Fungsi.log("Duplicate");
+                                }
                             } else {
                                 Fungsi.writeLog("GATEWAY OFF: " + to + " " + message);
                             }
                         } else {
                             Fungsi.writeLog("ERROR: TO MESSAGE AND SECRET REQUIRED : " + to + " " + message);
                         }
-
                         mqttAndroidClient.publish(topic, "".getBytes(), 0, true);
                     } else {
                         Fungsi.log("MQTT Received empty: " + topic);
@@ -251,8 +311,10 @@ public class BackgroundService extends Service {
 
                 if (reconnect) {
                     Fungsi.writeLog("MQTT Reconnect");
+                    setSubtext("Reconnect");
                     subscribeToTopic();
                 } else {
+                    setSubtext("Connected");
                     Fungsi.writeLog("MQTT Connected");
                 }
             }
@@ -277,11 +339,14 @@ public class BackgroundService extends Service {
                     disconnectedBufferOptions.setDeleteOldestMessages(true);
                     mqttAndroidClient.setBufferOpts(disconnectedBufferOptions);
                     subscribeToTopic();
+
+                    setSubtext("Connected");
                 }
 
                 @Override
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
                     exception.printStackTrace();
+                    setSubtext("Connection Failure");
                     Fungsi.writeLog("Failed to connect to " + Aplikasi.app.getSharedPreferences("pref",0).getString("mqtt_server", "") + "\n" + exception.getMessage());
                 }
             });
@@ -299,12 +364,15 @@ public class BackgroundService extends Service {
             mqttAndroidClient.subscribe(deviceID, 0, Aplikasi.app, new IMqttActionListener() {
                 @Override
                 public void onSuccess(IMqttToken asyncActionToken) {
+                    lockWifi(true);
                     Fungsi.writeLog("MQTT Subscribed: " + deviceID);
+                    setSubtext("Subscribed");
                 }
 
                 @Override
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
                     exception.printStackTrace();
+                    setSubtext("Subscribe Failure");
                     Fungsi.writeLog("MQTT Subscribe Failed: " + deviceID + "\n" + exception.getMessage());
                 }
             });
@@ -319,6 +387,21 @@ public class BackgroundService extends Service {
     public IBinder onBind(Intent intent) {
         Fungsi.log("BackgroundService onBind");
         return null;
+    }
+
+    public void lockWifi(boolean lock){
+        try {
+            if (wifiLock == null)
+                wifiLock = ((WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE))
+                        .createWifiLock(WifiManager.WIFI_MODE_FULL, "Gateway lock Wifi");
+            if (lock) {
+                wifiLock.acquire();
+            } else {
+                wifiLock.release();
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
 
     private void sendSMSorUSSD(String to, String message, int simNumber) {
@@ -382,8 +465,9 @@ public class BackgroundService extends Service {
                 intent = new Intent("MainActivity");
                 intent.putExtra("kill",true);
                 LocalBroadcastManager.getInstance(BackgroundService.this).sendBroadcast(intent);
-
-                BackgroundService.this.stopSelf();
+                lockWifi(false);
+                stopForeground(true);
+                stopSelf();
             }else {
                 LocalBroadcastManager.getInstance(BackgroundService.this).sendBroadcast(new Intent("MainActivity"));
             }

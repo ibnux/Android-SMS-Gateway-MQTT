@@ -31,33 +31,9 @@
         }
       ],
       "relations": []
-    },
-    {
-      "id": "2:2472176325259176808",
-      "lastPropertyId": "3:6652393022361348486",
-      "name": "LogMessage",
-      "properties": [
-        {
-          "id": "1:1516124038407444488",
-          "name": "id",
-          "type": 6,
-          "flags": 1
-        },
-        {
-          "id": "2:6043038466911872667",
-          "name": "time",
-          "type": 6
-        },
-        {
-          "id": "3:6652393022361348486",
-          "name": "message",
-          "type": 9
-        }
-      ],
-      "relations": []
     }
   ],
-  "lastEntityId": "2:2472176325259176808",
+  "lastEntityId": "1:5426138236895599881",
   "lastIndexId": "0:0",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
