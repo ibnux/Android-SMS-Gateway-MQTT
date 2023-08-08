@@ -274,7 +274,7 @@ public class MainActivity extends AppCompatActivity {
             builder2.setMessage("Data will send using POST with parameter number and message and type=received/sent/delivered/ussd");
             final EditText input2 = new EditText(this);
             input2.setText(getSharedPreferences("pref", 0).getString("urlPost", ""));
-            input2.setHint("https://sms.ibnux.net");
+            input2.setHint("https://sms.domain.tld/callback.php");
             input2.setMaxLines(1);
             input2.setInputType(InputType.TYPE_TEXT_VARIATION_URI | InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT);
             builder2.setView(input2);
