@@ -20,18 +20,18 @@ public class UssdService extends AccessibilityService {
 
     @Override
     public void onCreate() {
-        Fungsi.log(TAG,"UssdService onCreate");
+        Fungsi.log(TAG, "UssdService onCreate");
     }
 
     @Override
     public void onDestroy() {
-        Fungsi.log(TAG,"UssdService onDestroy");
+        Fungsi.log(TAG, "UssdService onDestroy");
         super.onDestroy();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Fungsi.log(TAG,"UssdService onStartCommand");
+        Fungsi.log(TAG, "UssdService onStartCommand");
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -39,7 +39,7 @@ public class UssdService extends AccessibilityService {
     public void onAccessibilityEvent(AccessibilityEvent event) {
         Fungsi.log(TAG, "onAccessibilityEvent");
 
-        if(!getSharedPreferences("pref",0).getBoolean("gateway_on",true)){
+        if (!getSharedPreferences("pref", 0).getBoolean("gateway_on", true)) {
             Fungsi.log(TAG, "gateway_off");
             return;
         }
@@ -50,18 +50,18 @@ public class UssdService extends AccessibilityService {
             Fungsi.log(TAG, "TYPE_WINDOW_STATE_CHANGED");
             return;
         }
-        if(event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && (source == null || !source.getClassName().equals("android.widget.TextView"))) {
+        if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && (source == null || !source.getClassName().equals("android.widget.TextView"))) {
             Fungsi.log(TAG, "TYPE_WINDOW_CONTENT_CHANGED");
             return;
         }
-        if(event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && TextUtils.isEmpty(source.getText())) {
+        if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && TextUtils.isEmpty(source.getText())) {
             Fungsi.log(TAG, "TYPE_WINDOW_CONTENT_CHANGED");
             return;
         }
 
         List<CharSequence> eventText;
 
-        if(event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+        if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             eventText = event.getText();
         } else {
             eventText = Collections.singletonList(source.getText());
@@ -69,19 +69,19 @@ public class UssdService extends AccessibilityService {
 
         String text = processUSSDText(eventText);
 
-        if( TextUtils.isEmpty(text) ) return;
+        if (TextUtils.isEmpty(text)) return;
 
         // Close dialog
         performGlobalAction(GLOBAL_ACTION_BACK); // This works on 4.1+ only
         Fungsi.log(TAG, text);
-        if(SimUtil.current!=null){
+        if (SimUtil.current != null) {
             Fungsi.writeLog("USSD Received: " + text);
             SmsListener.sendPOST(getSharedPreferences("pref", 0).getString("urlPost", null),
-                    SimUtil.current.to+SimUtil.current.sim, text, "ussd");
-        }else {
+                    SimUtil.current.to + SimUtil.current.sim, text, "ussd", String.valueOf(System.currentTimeMillis()));
+        } else {
             Fungsi.writeLog("USSD Received: " + text);
             SmsListener.sendPOST(getSharedPreferences("pref", 0).getString("urlPost", null),
-                    "ussd", text, "ussd");
+                    "ussd", text, "ussd", String.valueOf(System.currentTimeMillis()));
         }
         SimUtil.runUssd();
     }
@@ -90,7 +90,7 @@ public class UssdService extends AccessibilityService {
         for (CharSequence s : eventText) {
             String text = String.valueOf(s);
             // Return text if text is the expected ussd response
-            if( true ) {
+            if (true) {
                 return text;
             }
         }
@@ -111,7 +111,7 @@ public class UssdService extends AccessibilityService {
         info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED | AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
         info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC;
         setServiceInfo(info);
-        Toast.makeText(this,"Ready to listen USSD",Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Ready to listen USSD", Toast.LENGTH_SHORT).show();
     }
 
 //    @Override

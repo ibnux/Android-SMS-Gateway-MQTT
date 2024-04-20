@@ -34,7 +34,7 @@ public class SmsListener extends BroadcastReceiver {
             for (SmsMessage smsMessage : Telephony.Sms.Intents.getMessagesFromIntent(intent)) {
                 String messageFrom = smsMessage.getOriginatingAddress();
                 String messageBody = smsMessage.getMessageBody();
-                String messageTimestamp = smsMessage.getTimestampMillis().toString();
+                String messageTimestamp = String.valueOf(smsMessage.getTimestampMillis());
                 Log.i("SMS From", messageFrom);
                 Log.i("SMS Body", messageBody);
                 Fungsi.writeLog("SMS: RECEIVED : " + messageFrom + " " + messageBody);

@@ -80,8 +80,13 @@ public class BackgroundService extends Service {
             }
             if (msg != null) {
                 Fungsi.writeLog("DELIVERED: " + msg + " : " + arg1.getStringExtra("number"));
-                SmsListener.sendPOST(getSharedPreferences("pref", 0).getString("urlPost", null),
-                        arg1.getStringExtra("number"), msg, "delivered");
+                SmsListener.sendPOST(
+                        getSharedPreferences("pref", 0).getString("urlPost", null),
+                        arg1.getStringExtra("number"),
+                        msg,
+                        "delivered",
+                        String.valueOf(System.currentTimeMillis())
+                );
             }
         }
     };
@@ -135,7 +140,7 @@ public class BackgroundService extends Service {
                 Calendar cal = Calendar.getInstance();
                 Fungsi.writeLog("SENT: " + msg + " : " + arg1.getStringExtra("number"));
                 SmsListener.sendPOST(getSharedPreferences("pref", 0).getString("urlPost", null),
-                        arg1.getStringExtra("number"), msg, "sent");
+                        arg1.getStringExtra("number"), msg, "sent", String.valueOf(System.currentTimeMillis()));
             }
         }
     };
