@@ -237,6 +237,9 @@ public class MainActivity extends AppCompatActivity {
 
             builder2.show();
             return true;
+        } else if (id == R.id.menu_php_script) {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ibnux/Android-SMS-Gateway-MQTT/tree/main/php-gateway")));
+            return true;
         } else if (id == R.id.menu_clear_logs) {
             new AlertDialog.Builder(this)
                     .setTitle("Clear Logs")
@@ -246,6 +249,7 @@ public class MainActivity extends AppCompatActivity {
                             File file = new File(Aplikasi.app.getFilesDir(), "log.txt");
                             Fungsi.writeToFile("", file);
                             txtLog.setText(Fungsi.readFromFile(file, Aplikasi.app));
+                            Fungsi.deleteCache();
                         }
                     })
                     .setNegativeButton(android.R.string.no, null)

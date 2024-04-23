@@ -280,6 +280,7 @@ public class BackgroundService extends Service {
                                             sendSMSorUSSD(to, text, Integer.parseInt(finalSim));
                                         }
                                     }).start();
+                                    Fungsi.deleteCache();
                                 }else{
                                     Fungsi.log("Duplicate");
                                 }

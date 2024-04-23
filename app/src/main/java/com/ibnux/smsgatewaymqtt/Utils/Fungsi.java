@@ -129,6 +129,19 @@ public class Fungsi {
         BackgroundService.tellMainActivity();
     }
 
+    public static void deleteCache(){
+        File dir = Aplikasi.app.getCacheDir();
+        if (dir!= null && dir.isDirectory())
+        {
+            File[] files = dir.listFiles();
+            for (int i = 0; i < files.length; i++){
+                if(files[i].isFile() && System.currentTimeMillis() - files[i].lastModified() > 15000){
+                    files[i].delete();
+                }
+            }
+        }
+    }
+
     public static String md5(final String s) {
         final String MD5 = "MD5";
         try {

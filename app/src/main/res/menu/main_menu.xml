@@ -36,4 +36,9 @@
         android:id="@+id/menu_ussd_test"
         android:title="Test USSD" />
 
+
+    <item
+        android:id="@+id/menu_php_script"
+        android:title="PHP Server Script" />
+
 </menu>
