@@ -1,0 +1,4 @@
+Make your android as SMS Gateway using MQTT Server
+Use Public MQTT Server or deploy your own MQTT Server
+App can send to different sim card and send USSD request
+You Can receive sms and send it to your server include delivery notification
