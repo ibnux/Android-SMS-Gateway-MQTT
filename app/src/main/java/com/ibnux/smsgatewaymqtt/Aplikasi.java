@@ -5,9 +5,6 @@ package com.ibnux.smsgatewaymqtt;
  */
 
 import android.app.Application;
-import android.content.SharedPreferences;
-
-import java.util.UUID;
 
 public class Aplikasi extends Application {
 
@@ -16,7 +13,6 @@ public class Aplikasi extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        ObjectBox.init(this);
         this.app = this;
     }
 

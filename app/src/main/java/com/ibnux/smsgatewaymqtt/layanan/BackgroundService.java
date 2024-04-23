@@ -31,14 +31,9 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.ibnux.smsgatewaymqtt.Aplikasi;
 import com.ibnux.smsgatewaymqtt.MainActivity;
-import com.ibnux.smsgatewaymqtt.ObjectBox;
 import com.ibnux.smsgatewaymqtt.R;
 import com.ibnux.smsgatewaymqtt.Utils.Fungsi;
 import com.ibnux.smsgatewaymqtt.Utils.SimUtil;
-import com.ibnux.smsgatewaymqtt.data.LogLine;
-import com.ibnux.smsgatewaymqtt.data.LogLine_;
-import com.ibnux.smsgatewaymqtt.data.LogMessage;
-import com.ibnux.smsgatewaymqtt.data.LogMessage_;
 
 import org.eclipse.paho.android.service.MqttAndroidClient;
 import org.eclipse.paho.client.mqttv3.DisconnectedBufferOptions;
@@ -51,13 +46,10 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.UUID;
-
-import io.objectbox.Box;
-import io.objectbox.query.QueryBuilder;
-import kotlin.reflect.KFunction;
 
 public class BackgroundService extends Service {
     public static MqttAndroidClient mqttAndroidClient;
@@ -234,7 +226,7 @@ public class BackgroundService extends Service {
             return;
         }
         if (mqttAndroidClient == null){
-                mqttAndroidClient = new MqttAndroidClient(getApplicationContext(), sp.getString("mqtt_server", null), sp.getString("deviceID", UUID.randomUUID().toString()));
+                mqttAndroidClient = new MqttAndroidClient(getApplicationContext(), sp.getString("mqtt_server", null), UUID.randomUUID().toString());
         }
         mqttAndroidClient.setCallback(new MqttCallbackExtended() {
             @Override
@@ -252,12 +244,9 @@ public class BackgroundService extends Service {
             public void messageArrived(String topic, MqttMessage message) throws Exception {
                 try {
                     String msg = new String(message.getPayload());
-                    Box<LogMessage> box= ObjectBox.get().boxFor(LogMessage.class);
-                    // remove duplicate log after 5 minutes
-                    box.query().less(LogMessage_.time, System.currentTimeMillis()-300000L).build().remove();
                     if (!msg.isEmpty()) {
 
-                        JSONObject json = new JSONObject(new String(message.getPayload()));
+                        JSONObject json = new JSONObject(msg);
                         String to = json.getString("to");
                         String sim = "0";
                         if (json.has("sim")) {
@@ -273,10 +262,18 @@ public class BackgroundService extends Service {
                         if (!TextUtils.isEmpty(to) && !TextUtils.isEmpty(text)) {
                             Fungsi.writeLog("MQTT Received: " + topic + "\n" + msg);
                             if (sp.getBoolean("gateway_on", true)) {
+                                sim = sim.replaceAll( "[^\\d]", "" );
+                                if(sim.isEmpty()){
+                                    sim = "0";
+                                }
                                 String finalSim = sim;
                                 // low bandwidth will have duplicate message
-                                if(box.query().equal(LogMessage_.message, to+message+sim, QueryBuilder.StringOrder.CASE_INSENSITIVE).build().find().size()==0) {
-                                    box.put(new LogMessage(to+message+sim));
+                                String md5 = Fungsi.md5(msg);
+                                File fileMd5 = new File(Aplikasi.app.getCacheDir(), md5+".txt");
+                                // after 15 seconds, can resend, sometimes mqtt get double message
+                                if(!fileMd5.exists() || System.currentTimeMillis() - fileMd5.lastModified() > 15000) {
+                                    fileMd5.setLastModified(System.currentTimeMillis());
+                                    Fungsi.writeToFile(String.valueOf(System.currentTimeMillis()), fileMd5);
                                     new Thread(new Runnable() {
                                         @Override
                                         public void run() {

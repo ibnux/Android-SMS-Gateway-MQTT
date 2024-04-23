@@ -11,14 +11,14 @@ $message = urldecode($_REQUEST['message']);
 $deviceID = urldecode($_REQUEST['deviceID']);
 $sim = urldecode($_REQUEST['sim'])*1;
 
-if(empty($to) || empty($text) || empty($deviceID)){
+if(empty($to) || empty($message) || empty($deviceID)){
     die("?to=&message=&deviceID=&sim=");
 }
 
 $fields = json_encode (
     array (
         "to" => $to,
-        "message" => $text,
+        "message" => $message,
         "sim" => $sim
     )
 );

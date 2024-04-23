@@ -1,6 +1,5 @@
 plugins {
     id 'com.android.application'
-    id "io.objectbox"
 }
 
 android {
@@ -11,8 +10,8 @@ android {
         applicationId "com.ibnux.smsgatewaymqtt"
         minSdk 24
         targetSdk 33
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -30,7 +29,8 @@ android {
 }
 
 dependencies {
-
+    implementation 'io.requery:requery:1.6.0'
+    implementation 'io.requery:requery-android:1.6.0'
     implementation 'com.karumi:dexter:6.2.3'
     implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.1.0'
     implementation 'androidx.work:work-runtime:2.8.1'

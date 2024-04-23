@@ -6,11 +6,6 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/swipe"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -25,26 +20,19 @@
                 android:text="Hello World!"
                 android:textIsSelectable="true"/>
 
-            <EditText
+            <ScrollView
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textPersonName"
-                android:ems="10"
-                android:id="@+id/editTextSearch"
-                android:hint="@android:string/search_go"
-                android:autofillHints=""
-                android:textSize="12sp"
-                android:imeOptions="actionSearch"
-                android:selectAllOnFocus="true"/>
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recyclerview"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content">
+                <TextView
+                    android:id="@+id/txtLog"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="monospace"
+                    android:linksClickable="true"
+                    android:textIsSelectable="true"
+                    android:text="Log Message" />
+            </ScrollView>
 
         </LinearLayout>
-
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
 
 </LinearLayout>

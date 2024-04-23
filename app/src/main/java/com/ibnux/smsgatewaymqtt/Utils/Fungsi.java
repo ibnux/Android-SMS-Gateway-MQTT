@@ -5,7 +5,6 @@ package com.ibnux.smsgatewaymqtt.Utils;
  */
 
 
-
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -21,26 +20,53 @@ import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
-
 import com.ibnux.smsgatewaymqtt.Aplikasi;
 import com.ibnux.smsgatewaymqtt.MainActivity;
-import com.ibnux.smsgatewaymqtt.ObjectBox;
 import com.ibnux.smsgatewaymqtt.R;
-import com.ibnux.smsgatewaymqtt.data.LogLine;
-import com.ibnux.smsgatewaymqtt.data.LogLine_;
 import com.ibnux.smsgatewaymqtt.layanan.BackgroundService;
 import com.ibnux.smsgatewaymqtt.layanan.UssdService;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
-import io.objectbox.Box;
-
 public class Fungsi {
     private static NotificationManager mNotificationManager;
+
+    public static void writeToFile(String data, File file) {
+        try {
+            FileOutputStream outputStreamWriter = new FileOutputStream(file);
+            outputStreamWriter.write(data.getBytes());
+            outputStreamWriter.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static String readFromFile(File file, Context context) {
+
+        String data = "";
+        try (FileInputStream stream = new FileInputStream(file)) {
+            FileChannel fc = stream.getChannel();
+            MappedByteBuffer bb = fc.map(FileChannel.MapMode.READ_ONLY, 0, fc.size());
+            data = Charset.defaultCharset().decode(bb).toString();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return data;
+    }
+
 
 
     public static void sendNotification(String to, String msg) {
@@ -82,15 +108,24 @@ public class Fungsi {
     }
 
     static public void writeLog(String message){
-        LogLine ll = new LogLine();
+        File file = new File(Aplikasi.app.getFilesDir(), "log.txt");
+        String lastlog = "";
+        if(file.exists()) {
+            lastlog = readFromFile(file, Aplikasi.app);
+        }
+        String[] lines = lastlog.split("\r\n|\r|\n");
+        if(lines.length>110) {
+            String newLog = "";
+            for (int i = 0; i < 100; i++) {
+                newLog += lines[i] + "\r\n";
+            }
+            lastlog = newLog;
+        }
         Calendar cal = Calendar.getInstance();
         cal.setTimeInMillis(System.currentTimeMillis());
-        ll.time = cal.getTimeInMillis();
-        ll.date = cal.get(Calendar.YEAR) + "-" + (cal.get(Calendar.MONTH) + 1) + "-" + cal.get(Calendar.DAY_OF_MONTH) + " " +
-                cal.get(Calendar.HOUR_OF_DAY) + ":" + cal.get(Calendar.MINUTE) + ":" + cal.get(Calendar.SECOND);
-        ll.message = message;
-        ObjectBox.get().boxFor(LogLine.class).put(ll);
-        ObjectBox.get().boxFor(LogLine.class).query().less(LogLine_.time, System.currentTimeMillis()-3600000L).build().remove();
+        String newLog = cal.get(Calendar.YEAR) + "/" + (cal.get(Calendar.MONTH) + 1) + "/" + cal.get(Calendar.DAY_OF_MONTH) + " " +
+                cal.get(Calendar.HOUR_OF_DAY) + ":" + cal.get(Calendar.MINUTE) + ":" + cal.get(Calendar.SECOND)+"\n"+message;
+        writeToFile(newLog+"\n"+lastlog,file);
         BackgroundService.tellMainActivity();
     }
 

@@ -19,12 +19,10 @@ import android.os.Handler;
 import android.provider.Settings;
 import android.text.InputType;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.inputmethod.EditorInfo;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Switch;
@@ -36,15 +34,9 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.MenuItemCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.ibnux.smsgatewaymqtt.Utils.Fungsi;
 import com.ibnux.smsgatewaymqtt.Utils.SimUtil;
-import com.ibnux.smsgatewaymqtt.data.LogAdapter;
-import com.ibnux.smsgatewaymqtt.data.LogLine;
-import com.ibnux.smsgatewaymqtt.data.PaginationListener;
 import com.ibnux.smsgatewaymqtt.layanan.BackgroundService;
 import com.ibnux.smsgatewaymqtt.layanan.UssdService;
 import com.karumi.dexter.Dexter;
@@ -53,41 +45,27 @@ import com.karumi.dexter.PermissionToken;
 import com.karumi.dexter.listener.PermissionRequest;
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener;
 
+import java.io.File;
 import java.util.List;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
     private boolean serviceActive = false;
-    TextView info;
+    TextView info, txtLog;
     String infoTxt = "";
-    RecyclerView recyclerview;
-    LogAdapter adapter;
-    SwipeRefreshLayout swipe;
-    EditText editTextSearch;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        recyclerview = findViewById(R.id.recyclerview);
-        editTextSearch = findViewById(R.id.editTextSearch);
-        swipe = findViewById(R.id.swipe);
         info = findViewById(R.id.text);
+        txtLog = findViewById(R.id.txtLog);
         info.setText("Click Me to Show Device ID");
         info.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 info.setText(infoTxt);
-            }
-        });
-        swipe.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-            @Override
-            public void onRefresh() {
-                adapter.getNewData();
-                info.setText("Click Me to Show Device ID");
-                updateInfo();
-                swipe.setRefreshing(false);
             }
         });
         Dexter.withContext(this)
@@ -138,45 +116,9 @@ public class MainActivity extends AppCompatActivity {
         if (getSharedPreferences("pref", 0).getBoolean("gateway_on", true))
             checkServices();
 
-        recyclerview.setHasFixedSize(true);
-        // use a linear layout manager
-        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
-        recyclerview.setLayoutManager(layoutManager);
-        adapter = new LogAdapter();
-        recyclerview.setAdapter(adapter);
-        adapter.reload();
-        recyclerview.addOnScrollListener(new PaginationListener(layoutManager) {
-            @Override
-            protected void loadMoreItems() {
-                recyclerview.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        adapter.nextData();
-                    }
-                });
-            }
-        });
-
 
         startService(new Intent(this, UssdService.class));
-
-        editTextSearch.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                boolean handled = false;
-                if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                    recyclerview.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            adapter.search(editTextSearch.getText().toString());
-                            editTextSearch.clearFocus();
-                        }
-                    });
-                    handled = true;
-                }
-                return handled;
-            }
-        });
+        txtLog.setText(Fungsi.readFromFile(new File(Aplikasi.app.getFilesDir(), "log.txt"), Aplikasi.app));
 
     }
 
@@ -301,8 +243,9 @@ public class MainActivity extends AppCompatActivity {
                     .setMessage("Are you sure?")
                     .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int which) {
-                            ObjectBox.get().boxFor(LogLine.class).removeAll();
-                            adapter.reload();
+                            File file = new File(Aplikasi.app.getFilesDir(), "log.txt");
+                            Fungsi.writeToFile("", file);
+                            txtLog.setText(Fungsi.readFromFile(file, Aplikasi.app));
                         }
                     })
                     .setNegativeButton(android.R.string.no, null)
@@ -454,12 +397,7 @@ public class MainActivity extends AppCompatActivity {
         public void onReceive(Context context, Intent intent) {
             Fungsi.log("BroadcastReceiver received");
             if (intent.hasExtra("newMessage"))
-                recyclerview.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        adapter.getNewData();
-                    }
-                });
+                txtLog.setText(Fungsi.readFromFile(new File(Aplikasi.app.getFilesDir(), "log.txt"), Aplikasi.app));
             else if (intent.hasExtra("kill") && intent.getBooleanExtra("kill", false)) {
                 Fungsi.log("BackgroundService KILLED");
                 serviceActive = false;

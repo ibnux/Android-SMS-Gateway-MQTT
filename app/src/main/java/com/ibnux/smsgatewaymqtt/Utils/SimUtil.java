@@ -358,11 +358,11 @@ public class SimUtil {
             Intent is = new Intent(SENT);
             is.putExtra("number",number);
             PendingIntent sentPI = PendingIntent.getBroadcast(cx, time,
-                    is, 0);
+                    is, PendingIntent.FLAG_MUTABLE);
             Intent id = new Intent(DELIVERED);
             id.putExtra("number",number);
             PendingIntent deliveredPI = PendingIntent.getBroadcast(cx, time,
-                    id, 0);
+                    id, PendingIntent.FLAG_MUTABLE);
 
             try
             {
