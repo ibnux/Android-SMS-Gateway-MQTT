@@ -11,6 +11,8 @@ import android.widget.Toast;
 import com.ibnux.smsgatewaymqtt.Utils.Fungsi;
 import com.ibnux.smsgatewaymqtt.Utils.SimUtil;
 
+import org.json.JSONObject;
+
 import java.util.Collections;
 import java.util.List;
 
@@ -74,6 +76,20 @@ public class UssdService extends AccessibilityService {
         // Close dialog
         performGlobalAction(GLOBAL_ACTION_BACK); // This works on 4.1+ only
         Fungsi.log(TAG, text);
+
+        if(!BackgroundService.getDeviceID().isEmpty()) {
+            try {
+                JSONObject json = new JSONObject();
+                json.put("type", "ussd");
+                json.put("number", SimUtil.current.to);
+                json.put("message", text);
+                json.put("timestamp", String.valueOf(System.currentTimeMillis()));
+                BackgroundService.mqttAndroidClient.publish(BackgroundService.getDeviceID(), json.toString().getBytes(), 0, true);
+                Fungsi.writeLog("MQTT: USSD RESULT PUBLISHED TO MQTT");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
         if (SimUtil.current != null) {
             Fungsi.writeLog("USSD Received: " + text);
             SmsListener.sendPOST(getSharedPreferences("pref", 0).getString("urlPost", null),

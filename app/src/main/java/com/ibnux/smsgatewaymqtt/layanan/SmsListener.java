@@ -11,6 +11,8 @@ import android.util.Log;
 
 import com.ibnux.smsgatewaymqtt.Utils.Fungsi;
 
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
@@ -38,6 +40,19 @@ public class SmsListener extends BroadcastReceiver {
                 Log.i("SMS From", messageFrom);
                 Log.i("SMS Body", messageBody);
                 Fungsi.writeLog("SMS: RECEIVED : " + messageFrom + " " + messageBody);
+                if(!BackgroundService.getDeviceID().isEmpty()) {
+                    try {
+                        JSONObject json = new JSONObject();
+                        json.put("type", "received");
+                        json.put("number", messageFrom);
+                        json.put("message", messageBody);
+                        json.put("timestamp", messageTimestamp);
+                        BackgroundService.mqttAndroidClient.publish(BackgroundService.getDeviceID(), json.toString().getBytes(), 0, true);
+                        Fungsi.writeLog("MQTT: RECEIVED SMS  PUBLISHED TO MQTT");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
                 if (url != null) {
                     if (sp.getBoolean("gateway_on", true)) {
                         sendPOST(url, messageFrom, messageBody, "received", messageTimestamp);

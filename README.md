@@ -10,12 +10,43 @@ Sending SMS
 
 1. You send data to MQTT Server like [hivemq](https://www.hivemq.com/public-mqtt-broker/)
 2. App will receive message MQTT Server, and route it to sms
-3. App receive sent notification, and post it to your server
-4. App receive delivered notification, and post it to your server
+3. App receive sent notification, and post it to your  MQTT server os web server
+4. App receive delivered notification, and post it to your MQTT server os web server
 
 RECEIVE SMS
 1. App receive SMS
-2. App send it to your server
+2. App send it to your  MQTT server os web server
+
+## MQTT Received Topic Format
+
+type will be *received* or *sent* or *delivered*
+
+```JSON
+{
+  "type": "sent",
+  "number": "+0000000000",
+  "message": "success/Generic failure/No service/Null PDU/Radio off/unknown",
+  "timestamp": "1769744285000"
+}
+```
+
+```JSON
+{
+  "type": "delivered",
+  "number": "+0000000000",
+  "message": "success/failed/unknown",
+  "timestamp": "1769744285000"
+}
+```
+
+```JSON
+{
+  "type": "received",
+  "number": "+0000000000",
+  "message": "its message",
+  "timestamp": "1769744285000"
+}
+```
   
 # HOW TO USE?  
   

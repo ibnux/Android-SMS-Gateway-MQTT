@@ -53,7 +53,7 @@ import java.util.UUID;
 
 public class BackgroundService extends Service {
     public static MqttAndroidClient mqttAndroidClient;
-
+    static String deviceID = "";
     public static final String ACTION_STOP = "com.ibnux.smsgatewaymqtt.action.STOP";
     WifiManager.WifiLock wifiLock=null;
     NotificationManager mNotificationManager = null;
@@ -69,9 +69,25 @@ public class BackgroundService extends Service {
                 case Activity.RESULT_CANCELED:
                     msg = "failed";
                     break;
+                default:
+                    msg = "unknown";
+                    break;
             }
             if (msg != null) {
                 Fungsi.writeLog("DELIVERED: " + msg + " : " + arg1.getStringExtra("number"));
+                if(!BackgroundService.getDeviceID().isEmpty()) {
+                    try {
+                        JSONObject json = new JSONObject();
+                        json.put("type", "delivered");
+                        json.put("number", arg1.getStringExtra("number"));
+                        json.put("message", msg);
+                        json.put("timestamp", String.valueOf(System.currentTimeMillis()));
+                        BackgroundService.mqttAndroidClient.publish(BackgroundService.getDeviceID(), json.toString().getBytes(), 0, true);
+                        Fungsi.writeLog("MQTT: DELIVERED SMS INFO PUBLISHED TO MQTT");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
                 SmsListener.sendPOST(
                         getSharedPreferences("pref", 0).getString("urlPost", null),
                         arg1.getStringExtra("number"),
@@ -103,6 +119,9 @@ public class BackgroundService extends Service {
                 case SmsManager.RESULT_ERROR_RADIO_OFF:
                     msg = "Radio off";
                     break;
+                default:
+                    msg = "Unknown";
+                    break;
             }
 
             // RETRY AFTER 10 SECOND IF FAILED UNTIL 3 TIMES
@@ -129,7 +148,20 @@ public class BackgroundService extends Service {
             }
 
             if (msg != null) {
-                Calendar cal = Calendar.getInstance();
+
+                if(!BackgroundService.getDeviceID().isEmpty()) {
+                    try {
+                        JSONObject json = new JSONObject();
+                        json.put("type", "sent");
+                        json.put("number", arg1.getStringExtra("number"));
+                        json.put("message", msg);
+                        json.put("timestamp", String.valueOf(System.currentTimeMillis()));
+                        BackgroundService.mqttAndroidClient.publish(BackgroundService.getDeviceID(), json.toString().getBytes(), 0, true);
+                        Fungsi.writeLog("MQTT: SENT SMS INFO PUBLISHED TO MQTT");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
                 Fungsi.writeLog("SENT: " + msg + " : " + arg1.getStringExtra("number"));
                 SmsListener.sendPOST(getSharedPreferences("pref", 0).getString("urlPost", null),
                         arg1.getStringExtra("number"), msg, "sent", String.valueOf(System.currentTimeMillis()));
@@ -233,9 +265,10 @@ public class BackgroundService extends Service {
             public void connectionLost(Throwable cause) {
                 if(cause!=null){
                     cause.printStackTrace();
-                    Fungsi.writeLog("ERROR: NODATA : push received without data\n" + cause.getMessage());
+                    Fungsi.writeLog("MQTT: " + cause.getMessage());
+                }else {
+                    Fungsi.writeLog("MQTT Disconnected");
                 }
-                Fungsi.writeLog("MQTT Disconnected");
                 if(mNotificationManager!=null)
                     setSubtext("Connection Lost");
             }
@@ -247,6 +280,10 @@ public class BackgroundService extends Service {
                     if (!msg.isEmpty()) {
 
                         JSONObject json = new JSONObject(msg);
+                        if(json.has("type")){
+                            // its from info, don't read back
+                            return;
+                        }
                         String to = json.getString("to");
                         String sim = "0";
                         if (json.has("sim")) {
@@ -290,7 +327,6 @@ public class BackgroundService extends Service {
                         } else {
                             Fungsi.writeLog("ERROR: TO MESSAGE AND SECRET REQUIRED : " + to + " " + message);
                         }
-                        mqttAndroidClient.publish(topic, "".getBytes(), 0, true);
                     } else {
                         Fungsi.log("MQTT Received empty: " + topic);
                     }
@@ -361,8 +397,19 @@ public class BackgroundService extends Service {
         }
     }
 
+    public static String getDeviceID(){
+        if(deviceID.isEmpty()){
+            deviceID = Aplikasi.app.getSharedPreferences("pref",0).getString("deviceID","");
+        }
+        return deviceID;
+    }
+
     public void subscribeToTopic() {
-        String deviceID = Aplikasi.app.getSharedPreferences("pref",0).getString("deviceID","");
+        deviceID = getDeviceID();
+        if(deviceID.isEmpty()){
+            Fungsi.writeLog("Device ID not set" );
+            return;
+        }
         try {
             mqttAndroidClient.subscribe(deviceID, 0, Aplikasi.app, new IMqttActionListener() {
                 @Override
